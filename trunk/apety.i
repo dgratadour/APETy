@@ -23,6 +23,8 @@ require,"yao_funcs.i";
 require,"apety_utils.i";
 YAO_SAVEPATH = "/tmp/";
 
+// rien
+
 func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
 /* DOCUMENT get_psf(cbmes,noisevar,dphiOrtho,cov_mes_alias,den,disp=)
  */ 
