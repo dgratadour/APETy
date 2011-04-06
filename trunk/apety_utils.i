@@ -112,17 +112,13 @@ func calc_uijf(ftMode1,ftMode2,mode1,mode2,den,conjftpup)
   mask = den > max(den)*1.e-7;
   pix  = where(mask);
   uij = mode1*0.;
-  uij(pix) = ((-2.*fft((ftMode1*conj(ftMode2)).re,-1)+2.*fft((fft(mode1*mode2,1)*conjftpup).re,-1)).re)(pix)/den(pix);
+  uij(pix) = ((-2.*fft((ftMode1*conj(ftMode2)).re,-1)+2.*fft((fft(mode1*mode2,1)*conjftpup).re,-1)).re)(pix)/(den(pix));
   return uij;
 }
 
 func calc_dphi(phase,pup,den)
-/* DOCUMENT calc_uij
- *  This routine computes the Uij functions using the standard fourier domain formulae
- * KEYWORDS :
- * mode 1 (input) : The first mode (Mi)
- * mode 2 (input) : The second mode (Mj)
- * pup    (input) : the pupil
+/* DOCUMENT
+ * 
  */ 
 {
   npix = dimsof(phase)(2);
@@ -135,31 +131,53 @@ func calc_dphi(phase,pup,den)
   pix  = where(mask);
   dphi(pix) = fft(2*((fft(mi^2*p,1)*conj(fft(p,1))).re - abs(fft(mi*p,1))^2),-1).re(pix)/den(pix);
 
-  return dphi;   
+  return dphi; 
 }
 
 func calc_dphif(phase,pup,den,conjftpup)
-/* DOCUMENT calc_uijf
- *  This routine computes the Uij functions using the standard fourier domain formulae
- * KEYWORDS :
+/* DOCUMENT 
+ *  
+ * KEYWORDS :  
  */ 
 {
-  npix = dimsof(phase)(2);
-  mi = p = dphi = array(float,[2,2*npix,2*npix]);
-  mi(1:npix,1:npix) = phase;
-  p(1:npix,1:npix)  = pup;
+	npix = dimsof(phase)(2);
+	mi = p = dphi = array(float,[2,2*npix,2*npix]);
+	mi(1:npix,1:npix) = phase;
+	p(1:npix,1:npix)  = pup;
 
-  //den  = (fft(fft(p,1)*conj(fft(p,1)),-1)).re;
-  mask = den > max(den)*1.e-7;
-  pix  = where(mask);
-  dphi(pix) = fft(2*((fft(mi^2*p,1)*conjftpup).re - abs(fft(mi*p,1))^2),-1).re(pix)/den(pix);
+	mask = den > max(den)*1.e-7;
+	pix  = where(mask);
+    //dphi(pix) = fft(2.*((fft(mi^2*p,1)*conjftpup) - abs(fft(mi*p,1))^2).re,-1).re(pix)/den(pix);
+	dphi(pix) = fft(fft(mi^2*p, 1)*conjftpup + fft(p, 1)*conj(fft(mi^2*p, 1)) -2.*fft(mi*p, 1)*conj(fft(mi*p, 1)), -1).re(pix)/den(pix)
   
-  return dphi;   
+	return dphi;   
 }
 
+func calc_gamma(phase_para, phase_ortho, pup, den, conftpup)
+/* DOCUMENT 
+ *  
+ * KEYWORDS :  
+ */ 
+{
+	npix = dimsof(phase_para)(2);
+	m_para = m_ortho = p = gamma_eps = array(float,[2,2*npix,2*npix]);
+	m_para(1:npix,1:npix) = phase_para;
+	m_ortho(1:npix,1:npix) = phase_ortho;
+	p(1:npix,1:npix)  = pup;
+	
+	mask = den > max(den)*1.e-7;
+	pix  = where(mask);
+	
+	gamma_eps(pix) = fft(fft(m_para*m_ortho*p, 1)*conjftpup + fft(p, 1)*conj(fft(m_para*m_ortho*p, 1)) 
+					 - fft(m_para*p, 1)*conj(fft(m_ortho*p, 1)) - fft(m_ortho*p, 1)*conj(fft(m_para*p, 1)), -1).re(pix)/den(pix);
+	
+	return gamma_eps;
+}
+
+
 /////////////////////////////////////////////////////////////////////////////////////////////
-//////////////////                                       ////////////////////////////////////
-///////////////// THE FOLLOWING ROUTINES ARE NOT WORKING ////////////////////////////////////
+//////////////////                                         //////////////////////////////////
+///////////////// THE FOLLOWING ROUTINES ARE NOT WORKING  ///////////////////////////////////
 ////////////////                                         ////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////////////////////////
 

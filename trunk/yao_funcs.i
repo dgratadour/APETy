@@ -46,16 +46,16 @@ func mult_wfs(iter,disp=)
     // i.e. THE TRUTH !!! ... for test purposes only off-course !
     // don't forget to init dphi_ortho to 0 before starting the loop : dphi_ortho=0.
     // divide by loop.niter (e.g. 10000) when loop is over    
-    extern dphi_tot,dphi_ortho,smes_alias,smes_nonoise,matPass,den,conjftpup;
+    extern dphi_tot,dphi_para,dphi_ortho,gamma_eps,smes_alias,smes_nonoise,matPass,den,conjftpup;
     
     pix = where(ipupil);
  
     //tmp = float(phase);
-    tmp       = float(phase-phase(pix)(avg));
-    vect      = (tmp*ipupil)(pix)(+)*matPass(,+);
-    dm_p      = vect(+)*mInf(,,+);
+    tmp       = float(phase-phase(pix)(avg)); // remove piston mode
+    vect      = (tmp*ipupil)(pix)(+)*matPass(,+);  // projection phase sur modes miroir => vect: coefficient sur chaque mode
+    dm_p      = vect(+)*mInf(,,+); // phase para donc miroir
     tmp_ortho = float(tmp - dm_p);
-   
+
     n1     = dm(1)._n1;
     n2     = dm(1)._n2;
     sz = n2-n1+1;
@@ -67,9 +67,10 @@ func mult_wfs(iter,disp=)
     //dphi_ortho += calc_dphi(tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den);
     dphi_tot   += calc_dphif(tmp(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
     dphi_ortho += calc_dphif(tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
-    dphi_para  += calc_dphif(dm_p(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
-
-    nsave = wfs(ns).noise;
+    dphi_para  += calc_dphif(dm_p(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);	  
+	gamma_eps  += calc_gamma(dm_p(n1:n2,n1:n2), tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
+	  
+	nsave = wfs(ns).noise;
     // switch off noise
     wfs(ns).noise = 0;
     // get aliasing & noise free measurements

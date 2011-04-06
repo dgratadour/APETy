@@ -25,9 +25,16 @@ YAO_SAVEPATH = "/tmp/";
 
 func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
 /* DOCUMENT get_psf(cbmes,noisevar,dphiOrtho,cov_mes_alias,den,disp=)
+ 
+	cbmes = circular buffer mesure
+	den # OTF_tel # a_correlate(pupil)
+ 
  */ 
 {
-  extern cMat;
+	
+	
+  extern cMat; // command matrix # volts
+	           // RECONSTRUCTEUR
     
   if (disp == []) disp = 0;
   
@@ -39,20 +46,22 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
   //covMes -= covNoise;
 
   // compute the modes covariance from the measurements covariance (x comMat) eq. 41
-  cov_eps =(cMat(,+)*(covmes)(+,))(,+)*cMat(,+);
+  cov_eps =(cMat(,+)*(covmes)(+,))(,+)*cMat(,+); //D+(Cww)T(D+)  PB ordre des matrices?
   
   // compute the modes covariance from the aliasing measurements component Crr of eq. 44
   cov_alias =(cMat(,+)*(covmes_alias)(+,))(,+)*cMat(,+);
 
   // some inits
-  nmodes = dm._nact(sum);
+  nmodes = dm._nact(sum); // # actuators
   mInf = array(0.0f,sim._size,sim._size,nmodes);
   cpt = 0;
   for (nm=1;nm<=ndm;nm++) {
     n1 = dm(nm)._n1; n2 = dm(nm)._n2; nxy = n2-n1+1;
     for (cc=1;cc<=dm._nact(nm);cc++) {
       cpt ++;
-      scommand = float(modToAct(indexDm(1,nm):indexDm(2,nm),cc));
+      scommand = float(modToAct(indexDm(1,nm):indexDm(2,nm),cc)); // array 47x47
+		// compute the influence matrix with computed DM shape from given commands
+		// # modes miroirs
       mInf(n1:n2,n1:n2,cpt) = comp_dm_shape(nm,&scommand)*ipupil(n1:n2,n1:n2);
     }
   }
@@ -85,7 +94,9 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
   
   // fast version
   write,"modes fft computation\n";
+  // FFT(M(i)) = ftmi   M(i)  mode i
   ftmi = array(complex,[3,2*pupd,2*pupd,nmodes]);
+  // M(i)
   mis = array(float,[3,2*pupd,2*pupd,nmodes]);
   for (i=1;i<=nmodes;i++) {
     mis(1:pupd,1:pupd,i) = (mInf*ipupil)(n1:n2,n1:n2,i);
@@ -96,16 +107,16 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
   p(1:pupd,1:pupd) = ipupil(n1:n2,n1:n2);
   conjftp = conj(fft(p,1));
 
-  write,"uij computation\n";
+  write,"Uij computation\n";
   for (i=1;i<=nmodes;i++) {
     for (j=1;j<=i;j++) {
       write,format=" \rComputing U%d%d",i,j;
       tmp = calc_uijf(ftmi(,,i),ftmi(,,j),mis(,,i),mis(,,j),den,conjftp);
       if (i != j) {
         // pure parallel
-        dphiPara += (cov_eps(i,j)+cov_eps(j,i))*tmp;
+        dphiPara += (cov_eps(i,j)+cov_eps(j,i))*tmp; //Eq.36
         // aliasing component
-        dphiAlias += (cov_alias(i,j)+cov_alias(j,i))*tmp;
+        dphiAlias += (cov_alias(i,j)+cov_alias(j,i))*tmp; 
       } else {
         // pure parallel
         dphiPara += cov_eps(i,j)*tmp;
@@ -114,7 +125,7 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
       }
     }
   }
-  
+
   // here we create a mask that defines the support on which the phase structure functions or non-nil
   p = array(float,[2,2*pupd,2*pupd]);
   p(1:pupd,1:pupd)  = ipupil(n1:n2,n1:n2);
@@ -143,7 +154,7 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
 
   // building the telescope otf
   // the pixel size is fixed by the simulation parameters
-  fto_tel   = telfto(1.65,0.01,7.9,0.14,(*target.lambda)(1)/tel.diam/4.85/(float(sim._size)/sim.pupildiam),sim._size);
+  fto_tel   = telfto(1.65,0.01,8.,0.1125,(*target.lambda)(1)/tel.diam/4.85/(float(sim._size)/sim.pupildiam),sim._size);
 
   // building the various PSFs
   psftel = eclat(abs(fft(fto_tel,-1)));
@@ -159,7 +170,7 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
   difract = circavg(psftel,middle=1);
 
   if (disp) {
-    window,4,width=0;
+	window,4;
     fma;
     plg,difract/max(difract),color="red";
     plg,circavg(psftest,middle=1)/max(difract);
@@ -209,13 +220,14 @@ func test_apety(void)
   
   // computing the projection matrix from phase screen to modes i.e. phase2modes
   // and init some variables (for use in yao-apety.i)
-  valid_pix = where(ipupil);
-  tmp = mInf(*,)(valid_pix,);
-  matPass = (LUsolve(tmp(+,)*tmp(+,))(+,)*tmp(*,)(,+));
+  valid_pix  = where(ipupil);
+  tmp        = mInf(*,)(valid_pix,);
+  matPass    = (LUsolve(tmp(+,)*tmp(+,))(+,)*tmp(*,)(,+));
   smes_alias = smes_nonoise = array(0.,[2,dimsof(iMat)(2),1]);
   dphi_ortho = 0.;
-  dphi_tot = 0.;
-  dphi_para = 0.;
+  dphi_tot   = 0.;
+  dphi_para  = 0.;
+  gamma_eps  = 0.;
   
   n1     = dm(1)._n1;
   n2     = dm(1)._n2;
