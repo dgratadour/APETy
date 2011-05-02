@@ -113,8 +113,55 @@ func calc_uijf(ftMode1,ftMode2,mode1,mode2,den,conjftpup)
   pix  = where(mask);
   uij = mode1*0.;
   uij(pix) = ((-2.*fft((ftMode1*conj(ftMode2)).re,-1)+2.*fft((fft(mode1*mode2,1)*conjftpup).re,-1)).re)(pix)/(den(pix));
+
   return uij;
 }
+
+func calc_Viif(ftMode1,ftMode2,mode1,mode2,den,conjftpup)
+/*
+ *
+ *
+ */
+{
+	mask     = den > max(den) * 1.e-7;
+	pix      = where(mask);
+	Vii      = mode1 * 0.;
+	Vii(pix) = ((-2.*fft((ftMode1*conj(ftMode2)).re,-1)+2.*fft((fft(mode1*mode2,1)*conjftpup).re,-1)).re)(pix)/(den(pix));
+	
+	return Vii;
+
+}
+
+func SVeigen(a, &u) 
+/* DOCUMENT s = SVeigen(a, u) 
+ *   return eigenvalues S and eignvectors U of symmetric matrix A. 
+ *   That is, 
+ *     A(,+) * U(+,) = S(-,) * U 
+ *   The eigenvalues in S are in decreasing order of absolute value. 
+ *   The eigenvectors are orthonormal: 
+ *     U(+,) * U(+,) = unit(dimsof(A)(2)) 
+ *   If A is not symmetric, SVeigen returns garbage. 
+ * SEE ALSO: SVdec 
+ */ 
+{ 
+	local vt; 
+	n = dimsof(a)(2); 
+	u = array(0., n, n); 
+	u(1:numberof(u):n+1) = x = 0.4964726826642538*avg(abs(a)); 
+	/* this would work with x=0 except for case that A has 
+	 * equal singular values corresponding to eigenvalues of opposite sign 
+	 * adding essentially random x to all eigenvalues makes this very unlikely 
+	 */ 
+	s = SVdec(a+u, u, vt);          /* singular value = abs(eigenvalue) */ 
+	i = abs(u+transpose(vt))(sum,) > abs(u)(sum,);    /* eigenvalue > 0 */ 
+	s = (i+i-1.0)*s - x; 
+	/* sort unnecessary when x=0 */ 
+	list = sort(-abs(s)); 
+	s = s(list); 
+	u = u(,list); 
+	return s; 
+}
+
 
 func calc_dphi(phase,pup,den)
 /* DOCUMENT
