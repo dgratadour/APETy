@@ -23,7 +23,7 @@ require,"yao_funcs.i";
 require,"apety_utils.i";
 YAO_SAVEPATH = "/tmp/";
 
-func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
+func get_psf(cbmes, noisevar, dphiOrtho, gammaEps, covmes_alias, den, disp=)
 /* DOCUMENT get_psf(cbmes,noisevar,dphiOrtho,cov_mes_alias,den,disp=)
  
 	cbmes = circular buffer mesure
@@ -31,50 +31,49 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
  
  */ 
 {
-	
-	
-  extern cMat; // command matrix # volts
+	extern cMat; // command matrix # volts
 	           // RECONSTRUCTEUR
     
-  if (disp == []) disp = 0;
-  
-  // compute the (noisy) measurements covariance : Cww
-  covmes = cbmes(,+)*cbmes(,+)/dimsof(cbmes)(3);
-  // remove the noise variance on the diagonal
-  //covNoise = covMes *0.;
-  //for (i=1;i<=dimsof(covNoise)(2);i++) covNoise(i,i) = noisevar(i);
-  //covMes -= covNoise;
-
-  // compute the modes covariance from the measurements covariance (x comMat) eq. 41
-  cov_eps =(cMat(,+)*(covmes)(+,))(,+)*cMat(,+); //D+(Cww)T(D+)  PB ordre des matrices?
-  
-  // compute the modes covariance from the aliasing measurements component Crr of eq. 44
-  cov_alias =(cMat(,+)*(covmes_alias)(+,))(,+)*cMat(,+);
-
-  // some inits
-  nmodes = dm._nact(sum); // # actuators
-  mInf = array(0.0f,sim._size,sim._size,nmodes);
-  cpt = 0;
-  for (nm=1;nm<=ndm;nm++) {
-    n1 = dm(nm)._n1; n2 = dm(nm)._n2; nxy = n2-n1+1;
-    for (cc=1;cc<=dm._nact(nm);cc++) {
-      cpt ++;
-      scommand = float(modToAct(indexDm(1,nm):indexDm(2,nm),cc)); // array 47x47
-		// compute the influence matrix with computed DM shape from given commands
-		// # modes miroirs
-      mInf(n1:n2,n1:n2,cpt) = comp_dm_shape(nm,&scommand)*ipupil(n1:n2,n1:n2);
-    }
-  }
-
-  n1     = dm(1)._n1;
-  n2     = dm(1)._n2;
-  sz = n2-n1+1;
-  pupd = sim.pupildiam;
-  ind0 = (sz - pupd)/2;
-  n1 += ind0;
-  n2 -= ind0;
-
-  dphiPara = dphiAlias = 0.;
+	if (disp == []) disp = 0;
+	
+	// compute the (noisy) measurements covariance : Cww
+	covmes = cbmes(,+)*cbmes(,+)/dimsof(cbmes)(3);
+	// remove the noise variance on the diagonal
+	//covNoise = covMes *0.;
+	//for (i=1;i<=dimsof(covNoise)(2);i++) covNoise(i,i) = noisevar(i);
+	//covMes -= covNoise;
+	
+	// compute the modes covariance from the measurements covariance (x comMat) eq. 41
+	cov_eps =(cMat(,+)*(covmes)(+,))(,+)*cMat(,+); //D+(Cww)T(D+)  PB ordre des matrices?
+	
+	// compute the modes covariance from the aliasing measurements component Crr of eq. 44
+	cov_alias =(cMat(,+)*(covmes_alias)(+,))(,+)*cMat(,+);
+	
+	// some inits
+	nmodes = dm._nact(sum); // # actuators
+	mInf = array(0.0f,sim._size,sim._size,nmodes);
+	cpt = 0;
+	for (nm=1;nm<=ndm;nm++) {
+	  n1 = dm(nm)._n1; n2 = dm(nm)._n2; nxy = n2-n1+1;
+	  for (cc=1;cc<=dm._nact(nm);cc++) {
+		cpt ++;
+		scommand = float(modToAct(indexDm(1,nm):indexDm(2,nm),cc)); // array 47x47
+			// compute the influence matrix with computed DM shape from given commands
+			// # modes miroirs
+		mInf(n1:n2,n1:n2,cpt) = comp_dm_shape(nm,&scommand)*ipupil(n1:n2,n1:n2);
+		}
+	}
+	
+	
+	n1     = dm(1)._n1;
+	n2     = dm(1)._n2;
+	sz = n2-n1+1;
+	pupd = sim.pupildiam;
+	ind0 = (sz - pupd)/2;
+	n1 += ind0;
+	n2 -= ind0;
+	
+	dphiPara = dphiAlias = 0.;
 
   // compture the parallel component of the residual phase structure function
   // eq. 36
@@ -91,11 +90,14 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
     }
   }
   */
-  
+
+	
+/*
+	
+	
   // fast version
   write,"modes fft computation\n";
   // FFT(M(i)) = ftmi   M(i)  mode i
-  ftmi = array(complex,[3,2*pupd,2*pupd,nmodes]);
   // M(i)
   mis = array(float,[3,2*pupd,2*pupd,nmodes]);
   for (i=1;i<=nmodes;i++) {
@@ -103,10 +105,14 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
     ftmi(,,i) = fft(mis(,,i),1);
     write,format=" \rComputing fft of mode %d",i;
   }
+ 
+ 
+ ftmi = array(complex,[3,2*pupd,2*pupd,nmodes]);
   p = array(float,[2,2*pupd,2*pupd]);
   p(1:pupd,1:pupd) = ipupil(n1:n2,n1:n2);
   conjftp = conj(fft(p,1));
 
+	/*
   write,"Uij computation\n";
   for (i=1;i<=nmodes;i++) {
     for (j=1;j<=i;j++) {
@@ -116,7 +122,7 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
         // pure parallel
         dphiPara += (cov_eps(i,j)+cov_eps(j,i))*tmp; //Eq.36
         // aliasing component
-        dphiAlias += (cov_alias(i,j)+cov_alias(j,i))*tmp; 
+        dphiAlias += (cov_alias(i,j)+cov_alias(j,i))*tmp;
       } else {
         // pure parallel
         dphiPara += cov_eps(i,j)*tmp;
@@ -125,63 +131,116 @@ func get_psf(cbmes,noisevar,dphiOrtho,covmes_alias,den,disp=)
       }
     }
   }
+	//error;
+	para  = dphiPara;
+	alias = dphiAlias;
+ 
+ */
+	
+	write,"modes computation\n";
+	mis = array(float,[3,2*pupd,2*pupd,nmodes]);
+	for (i=1;i<=nmodes;i++) {
+		mis(1:pupd,1:pupd,i) = (mInf*ipupil)(n1:n2,n1:n2,i);
+		write,format=" \rComputing mode %d",i;
+	}
+	
+	ftmi = array(complex,[3,2*pupd,2*pupd,nmodes]);
+	p = array(float,[2,2*pupd,2*pupd]);
+	p(1:pupd,1:pupd) = ipupil(n1:n2,n1:n2);
+	conjftp = conj(fft(p,1));
+	
+	// very fast version
+	vii = array(float, [3, dimsof(p)(2), dimsof(p)(3), nmodes]);
+	
+	/* Some inits */
+	dim  = dimsof(mis);
+	dim1 = dim(2);
+	dim2 = dim(3);
+	dim3 = dim(4);
+	
+	/* Calculation of the eigen values/vectors */
+	l = SVeigen(cov_eps + cov_alias, b);
+	
+	write, "\nVii computation\n";
+	vii = mis(, , +) * b(+, );
 
-  // here we create a mask that defines the support on which the phase structure functions or non-nil
-  p = array(float,[2,2*pupd,2*pupd]);
-  p(1:pupd,1:pupd)  = ipupil(n1:n2,n1:n2);
+	for (i=1;i<=nmodes;i++) {
+		ftmi(,,i) = fft(vii(,,i),1);
+		write,format=" \rComputing fft of mode %d",i;
+	}	
+	
+	dphi = dphiPara * 0.;
+	
+	// up to here OK
+	
+	for (i=1;i<=nmodes;i++) {
+		write, format=" \rComputing V%d%d", i, i;
+		modei = vii(..,i);
+		
+		tmp = calc_Viif(ftmi(, , i), ftmi(, , i), modei, modei, den, conjftp);
+		
+		dphi  += tmp * l(i);
+	}
+		
+	// here we create a mask that defines the support on which the phase structure functions or non-nil
+	p = array(float,[2,2*pupd,2*pupd]);
+	p(1:pupd,1:pupd)  = ipupil(n1:n2,n1:n2);
+	
+	den  = (fft(fft(p,1)*conj(fft(p,1)),-1)).re;
+	mask = den > max(den)*1.e-7;
+	mask=1-mask;
+	den = den(where(mask));
+		
+	// building the otf following : OTF = exp(-1/2 * Dphi)
+	//tmp = exp(-0.5*para)*exp(-0.5*alias)*exp(-0.5*(dphiOrtho+2.*gammaEps)*(2*pi/(*target.lambda)(1))^2);
+	
+	tmp = exp(-0.5*dphi)*exp(-0.5*(dphiOrtho+2.*gammaEps)*(2*pi/(*target.lambda)(1))^2);
+	
+		
+	// clean-up the otf beyond the cut-off frequency
+	tmp(where(mask)) = 0.;
+	
+	sz = dimsof(tmp)(2);
+	
+	// building a larger support before backward transform
+	// this is where you take into account the sampling of the PSF
+	// basically shannon sampling means an array of [4 x cut-off freq (in pixels)] x [4 x cut-off freq]
+	// here we depend on yao and actually everything is fixed by sim._size
+	fto_turb = array(float,[2,sim._size,sim._size]);
+	fto_turb(1:sz,1:sz) = eclat(tmp);
+	
+	// recentering the otf on its final support
+	fto_turb = eclat(roll(fto_turb,[sim._size/2-sz/2,sim._size/2-sz/2]));
+	
+	// building the telescope otf
+	// the pixel size is fixed by the simulation parameters
+	fto_tel   = telfto(1.65,0.01,8.,0.1125,(*target.lambda)(1)/tel.diam/4.85/(float(sim._size)/sim.pupildiam),sim._size);
+	
+	// building the various PSFs
+	psftel = eclat(abs(fft(fto_tel,-1)));
+	psf    = eclat(abs(fft(fto_tel*fto_turb,-1)));
 
-  den  = (fft(fft(p,1)*conj(fft(p,1)),-1)).re;
-  mask = den > max(den)*1.e-7;
-  mask=1-mask;
+	//PSF from yao
+	psftest= imav(,,1,1)/sum(imav(,,1,1));
+	
+	// re-normalization of the reconstructed PSF and the telescope PSF
+	psfrec = psf/sum(psf);
+	psftel = psftel/sum(psftel);
 
-  // building the otf following : OTF = exp(-1/2 * Dphi)
-  tmp = exp(-0.5*dphiPara)*exp(-0.5*dphiAlias)*exp(-0.5*dphiOrtho*(2*pi/(*target.lambda)(1))^2);
+	difract = circavg(psftel,middle=1);
 
-  // clean-up the otf beyond the cut-off frequency
-  tmp(where(mask)) = 0.;
-  
-  sz = dimsof(tmp)(2);
-  
-  // building a larger support before backward transform
-  // this is where you take into account the sampling of the PSF
-  // basically shannon sampling means an array of [4 x cut-off freq (in pixels)] x [4 x cut-off freq]
-  // here we depend on yao and actually everything is fixed by sim._size
-  fto_turb = array(float,[2,sim._size,sim._size]);
-  fto_turb(1:sz,1:sz) = eclat(tmp);
-  
-  // recentering the otf on its final support
-  fto_turb = eclat(roll(fto_turb,[sim._size/2-sz/2,sim._size/2-sz/2]));
+	if (disp) {
+		fma; limits;
+		plg,difract/max(difract),color="red";
+		plg,circavg(psftest,middle=1)/max(difract);
+		limits,1,10;
+		plg,circavg(psfrec,middle=1)/max(difract),color="green";
+		xytitles,"pixels","Strehl ratio";
+		pltitle,"PSF circ avg";
+	}
 
-  // building the telescope otf
-  // the pixel size is fixed by the simulation parameters
-  fto_tel   = telfto(1.65,0.01,8.,0.1125,(*target.lambda)(1)/tel.diam/4.85/(float(sim._size)/sim.pupildiam),sim._size);
-
-  // building the various PSFs
-  psftel = eclat(abs(fft(fto_tel,-1)));
-  psf    = eclat(abs(fft(fto_tel*fto_turb,-1)));
-
-  // PSF from yao
-  psftest= imav(,,1,1)/sum(imav(,,1,1));
-  
-  // re-normalization of the reconstructed PSF and the telescope PSF
-  psfrec = psf/sum(psf);
-  psftel = psftel/sum(psftel);
-
-  difract = circavg(psftel,middle=1);
-
-  if (disp) {
-	window,4;
-    fma;
-    plg,difract/max(difract),color="red";
-    plg,circavg(psftest,middle=1)/max(difract);
-    limits,1,10;
-    plg,circavg(psfrec,middle=1)/max(difract),color="green";
-    xytitles,"pixels","Strehl ratio";
-    pltitle,"PSF circ avg";
-  }
-
-  error;
-  return psfrec;
+	error;
+	return psfrec;
 }
 
 func test_apety(void)
@@ -192,10 +251,10 @@ func test_apety(void)
   extern dphi_tot,dphi_ortho,dphi_para,smes_alias,smes_nonoise,matPass,den,conjftpup;
   
   //aoread,"nici.par";
-  aoread,"sh6x6_svipc.par";
-  //aoread,"sh16x16_svipc.par";
-  aoinit,clean=1;
-  aoloop,savecb=1;
+  //aoread,"sh6x6_svipc.par";
+  aoread,"sh16x16_svipc.par";
+  aoinit,clean=1,disp=0;
+  aoloop,savecb=1,disp=0;
 
   // r0 prop lambda^(6/5);
   // r0at05mic = tel.diam/atm.dr0at05mic;
@@ -252,7 +311,8 @@ func test_apety(void)
 
   // AO loop ... acquiring circular buffers
   // + computation dphi_ortho and the real dphi_tot for comparison
-  go,all=1;
+	//for (i=1;i<=loop.niter;i++) go,1;
+	go,all=1;
   
   smes = smes_alias(,2:);
   // compute the covariance of 
@@ -263,7 +323,7 @@ func test_apety(void)
   // in red the reconstructed psf
   // in green the telescope only psf
   
-  psf = get_psf(cbmes,0.,dphi_ortho/loop.niter,covmes_alias,den,disp=1);
+  psf = get_psf(cbmes,0.,dphi_ortho/loop.niter,gamma_eps/loop.niter,covmes_alias,den,disp=1);
 
   return psf;
 }
