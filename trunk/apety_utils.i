@@ -78,6 +78,24 @@ func circavg(a,center=,middle=)
   return sx/n;
 }
 
+func correlate(f, g, dir=) 
+/* DOCUMENT
+ *
+ *
+ *
+ */
+{
+	dir = dir;
+	if (is_void(dir)) dir = array(1, dimsof(f)(1));
+
+	ft_f = fft(f, dir);
+	ft_g = fft(g, dir);
+	conv = ft_f * conj(ft_g);
+	
+	cor  = fft(conv, -dir);  //   /!\ normalize by N^2 with N number of elements
+	return cor;
+}
+
 
 func calc_uij(mode1,mode2,pup,den)
 /* DOCUMENT calc_uij
@@ -152,7 +170,7 @@ func SVeigen(a, &u)
 	 * equal singular values corresponding to eigenvalues of opposite sign 
 	 * adding essentially random x to all eigenvalues makes this very unlikely 
 	 */ 
-	s = SVdec(a+u, u, vt);          /* singular value = abs(eigenvalue) */ 
+	s = SVdec(a+u, u, vt, full=1);          /* singular value = abs(eigenvalue) */ 
 	i = abs(u+transpose(vt))(sum,) > abs(u)(sum,);    /* eigenvalue > 0 */ 
 	s = (i+i-1.0)*s - x; 
 	/* sort unnecessary when x=0 */ 
@@ -209,7 +227,7 @@ func calc_gamma(phase_para, phase_ortho, pup, den, conftpup)
 	npix = dimsof(phase_para)(2);
 	m_para = m_ortho = p = gamma_eps = array(float,[2,2*npix,2*npix]);
 	m_para(1:npix,1:npix) = phase_para;
-	m_ortho(1:npix,1:npix) = phase_ortho;
+	m_ortho(1:npix,1:npix) = phase_ortho*(2*pi/(*target.lambda)(1))^2;
 	p(1:npix,1:npix)  = pup;
 	
 	mask = den > max(den)*1.e-7;
@@ -220,6 +238,95 @@ func calc_gamma(phase_para, phase_ortho, pup, den, conftpup)
 	
 	return gamma_eps;
 }
+
+func plot_dphi(dphi, color=) {
+	
+	if (is_void(color)) color="black";
+	
+	dphi = circavg(dphi);
+	ind  = where(dphi != 0.);
+	D_r  = 0.5 * ind / numberof(ind);
+	
+	plg, dphi(ind), D_r, marks=0, color=color;
+	pltitle, "Circavg of the phase structures";
+	xytitles, "D/r";
+}
+
+func get_noisevar(cbmes, method, cbcom, iMat) 
+/* DOCUMENT
+ *
+ *
+ *
+ */
+{	
+	if ((cbmes  == []) || 
+		(method == []) || 
+		(cbcom  == []) || 
+		(iMat   == [])) error,"Empty data or no method chosen";
+	
+	cb_openloop = iMat(,+) * cbcom(+,);
+	// reconstruction of Open loop with Closed loop
+	cb = cbmes - cb_openloop;
+
+	if (method == "DSP") {
+		
+		t     = span(0., loop.niter, loop.niter) * loop.ittime;
+		numax = 1. / (t(2) - t(1));
+		numin = 1. / (t(0) - t(1));
+		nu    = span(numin, numax, numberof(t));
+		
+		DSP = abs(fft(cb, [0,1]))^2 / dimsof(cb)(3);
+		ind = where(nu < numax / 2.);
+		DSP = DSP(, ind);
+		
+		nucut    = numax / 4.;
+		ind2     = where(nu(ind) > nucut)
+		noisevar = DSP(, ind2)(, avg);
+	}
+	
+	if (method == "auto_cor") {
+		
+		t      = span(-loop.ittime, loop.niter, loop.niter) * loop.ittime;
+		a_cor  = correlate(cb, cb, dir=[0,1]).re / (dimsof(cb)(3))^2;
+		
+		// parabola calculation
+		idx    = [2,4,6];
+		a0     = a_cor(, 1); // correlation at 0
+		dat    = a_cor(,idx); // 15 first points for the fit
+		X      = array(float, [2, 3, 3]); // matrix to invert 
+		X(, 1) = t(idx)^2; 
+		X(, 2) = t(idx);
+		X(, 3) = 1.;
+		l      = SVdec(X, u, vt); // invert calculation
+		invX   = (vt(+,) * diag(1./l)(+,))(,+)*u(,+); 
+		abc    = invX(,+) * dat(, +); // parameter of the parabola
+		
+		noisevar = a0 - abc(3, );
+		idx      = where2(noisevar<0.);
+		
+		if (!is_void(idx)) noisevar(idx(1,)) = 1.e-10;
+	}
+	
+	if (method == "curl") {
+		
+		indx = indgen(1:dimsof(cbmes)(2):2); // index for x direction
+		indy = indgen(2:dimsof(cbmes)(2):2); // index for y direction
+		dsx  = cbmes(indx, )(dif, );         // x slopes variations
+		dsy  = cbmes(indy, )(dif, );         // y slopes variations
+		dx   = indx(dif);
+		dy   = indy(dif);
+		
+		curl = dsy / dx - dsx / dy;          // curl calculation
+		
+		noisevar = array(curl(,avg)(rms), dimsof(cbmes)(2));
+	}
+	
+	
+	
+	
+	return noisevar;
+}
+
 
 
 /////////////////////////////////////////////////////////////////////////////////////////////

@@ -68,8 +68,8 @@ func mult_wfs(iter,disp=)
     dphi_tot   += calc_dphif(tmp(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
     dphi_ortho += calc_dphif(tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
     dphi_para  += calc_dphif(dm_p(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);	  
-	gamma_eps  += calc_gamma(dm_p(n1:n2,n1:n2), tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
-	  
+	//gamma_eps  += calc_gamma(dm_p(n1:n2,n1:n2), tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
+
 	nsave = wfs(ns).noise;
     // switch off noise
     wfs(ns).noise = 0;

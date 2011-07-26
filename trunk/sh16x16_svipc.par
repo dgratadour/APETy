@@ -6,7 +6,7 @@ sim.debug          = 0;
 sim.verbose        = 0;
 
 //-------------------------------
-atm.dr0at05mic     = 42.44;  // this is r0=0.166 at 550 nm
+atm.dr0at05mic     = 30.;  // this is r0=0.166 at 550 nm
 atm.screen	   = &(Y_USER+"data/screen"+["1","2","3","4"]+".fits");
 atm.layerfrac      = &([0.4,0.2,0.3,0.1]);
 atm.layerspeed     = &([11.,20,29,35]);
@@ -22,16 +22,16 @@ wfs(n).type	      = "hartmann";
 wfs(n).lambda	      = 0.65;
 wfs(n).gspos          = [0.,0.];
 wfs(n).gsalt          = 0.;
-wfs(n).gsmag          = 5.;
+wfs(n).gsmag          = 6.;
 wfs(n).shmethod	      = 2;
 wfs(n).shnxsub	      = 16;
 wfs(n).pixsize        = 0.2;
 wfs(n).npixels        = 10;
-wfs(n).noise          = 1;
-wfs(n).ron            = 3.5;
+wfs(n).noise          = 0;
+wfs(n).ron            = 0;//3.5;
 wfs(n).shthreshold    = 0.;
 wfs(n).nintegcycles   = 1;
-wfs(n).svipc          = 4;
+wfs(n).svipc          = ;
 
 //-------------------------------
 ndm                = 2;
