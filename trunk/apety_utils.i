@@ -78,6 +78,39 @@ func circavg(a,center=,middle=)
   return sx/n;
 }
 
+func circavg_quad(a)
+/* DOCUMENT circavg_quad
+ *  
+ * average=circavg_quad(array)
+ *
+ *
+ * SEE ALSO: 
+ */ 
+{
+	s=dimsof(a);
+	
+	if (s(1) != 2) write,"error - invalid dimensions";
+	if (s(3) != s(2)) write,"error - invalid dimensions";
+	
+	dim=s(2);
+	
+	
+	r=long(roll(dist(2*dim)+.5)+1)(1:dim,1:dim);
+	j=long(max(r));
+	n=array(long,j);
+	sx=array(double,j);
+	dim2=long(dim)*long(dim);
+	
+	for (i=1;i<=dim2;i++) {
+		j=r(i);
+		sx(j)=sx(j)+a(i);
+		n(j)=n(j)+1;
+	}
+	
+	return sx/n;
+}
+
+
 func correlate(f, g, dir=) 
 /* DOCUMENT
  *
@@ -90,12 +123,60 @@ func correlate(f, g, dir=)
 
 	ft_f = fft(f, dir);
 	ft_g = fft(g, dir);
-	conv = ft_f * conj(ft_g);
+	conv = conj(ft_f) * ft_g;
 	
 	cor  = fft(conv, -dir);  //   /!\ normalize by N^2 with N number of elements
 	return cor;
 }
 
+func correlate_f(ft_f, conjftg) {
+/* DOCUMENT
+ *
+ *  same that correlate() but with fft(f, dir) & conj(fft(g, dir)) given
+ *
+ */
+	
+	conv = ft_f * conjftg;
+	
+	cor  = fft(conv, -1);  //   /!\ normalize by N^2 with N number of elements
+	return cor;
+	
+}
+
+
+func rebin_n(image, nbPix)
+/* DOCUMENT rebin_n( image , nbPix )
+ 
+ Rebinning procedure.
+ Contrarily to function "rebin", the arguments here are
+ - the image
+ - the number of pixels of the output image
+ 
+ Algorithm :
+ The image is rebinned by Fourier-transform, zero-padding, then
+ Fourier-transformed back to the original space.
+ 
+ The total flux sum(image) is preserved by this algorithm.
+ 
+ SEE ALSO:  rebin
+ 
+ */
+{
+	nx = dimsof(image)(2)
+	ny = dimsof(image)(3)
+	fppr = array(0+0i,nbPix,nbPix)
+	fpp = fft(image)
+	fppr( 1:nx/2        , 1:ny/2 )        = fpp( 1:nx/2  , 1:ny/2 );
+	fppr( 1:nx/2        , 1+nbPix-ny/2: ) = fpp( 1:nx/2 ,  1+ny/2:);
+	fppr( 1+nbPix-nx/2: , 1:ny/2 )        = fpp( 1+nx/2: , 1:ny/2 );
+	fppr( 1+nbPix-nx/2: , 1+nbPix-ny/2: ) = fpp( 1+nx/2: , 1+ny/2: );
+	
+	xx = double(nbPix) / double(nx);
+	xx *= double(nbPix) / double(ny);
+	ppr = fft( fppr , -1 ).re / xx / nx / ny;
+	
+	return ppr;
+}
 
 func calc_uij(mode1,mode2,pup,den)
 /* DOCUMENT calc_uij
@@ -150,36 +231,6 @@ func calc_Viif(ftMode1,ftMode2,mode1,mode2,den,conjftpup)
 
 }
 
-func SVeigen(a, &u) 
-/* DOCUMENT s = SVeigen(a, u) 
- *   return eigenvalues S and eignvectors U of symmetric matrix A. 
- *   That is, 
- *     A(,+) * U(+,) = S(-,) * U 
- *   The eigenvalues in S are in decreasing order of absolute value. 
- *   The eigenvectors are orthonormal: 
- *     U(+,) * U(+,) = unit(dimsof(A)(2)) 
- *   If A is not symmetric, SVeigen returns garbage. 
- * SEE ALSO: SVdec 
- */ 
-{ 
-	local vt; 
-	n = dimsof(a)(2); 
-	u = array(0., n, n); 
-	u(1:numberof(u):n+1) = x = 0.4964726826642538*avg(abs(a)); 
-	/* this would work with x=0 except for case that A has 
-	 * equal singular values corresponding to eigenvalues of opposite sign 
-	 * adding essentially random x to all eigenvalues makes this very unlikely 
-	 */ 
-	s = SVdec(a+u, u, vt, full=1);          /* singular value = abs(eigenvalue) */ 
-	i = abs(u+transpose(vt))(sum,) > abs(u)(sum,);    /* eigenvalue > 0 */ 
-	s = (i+i-1.0)*s - x; 
-	/* sort unnecessary when x=0 */ 
-	list = sort(-abs(s)); 
-	s = s(list); 
-	u = u(,list); 
-	return s; 
-}
-
 
 func calc_dphi(phase,pup,den)
 /* DOCUMENT
@@ -199,12 +250,15 @@ func calc_dphi(phase,pup,den)
   return dphi; 
 }
 
-func calc_dphif(phase,pup,den,conjftpup)
+func calc_dphif(phase, pup, den, conjftpup)
 /* DOCUMENT 
  *  
  * KEYWORDS :  
  */ 
 {
+	phase = phase(:pupd, :pupd);
+	pup   = pup(:pupd, :pupd);
+	
 	npix = dimsof(phase)(2);
 	mi = p = dphi = array(float,[2,2*npix,2*npix]);
 	mi(1:npix,1:npix) = phase;
@@ -212,11 +266,26 @@ func calc_dphif(phase,pup,den,conjftpup)
 
 	mask = den > max(den)*1.e-7;
 	pix  = where(mask);
+	
     //dphi(pix) = fft(2.*((fft(mi^2*p,1)*conjftpup) - abs(fft(mi*p,1))^2).re,-1).re(pix)/den(pix);
 	dphi(pix) = fft(fft(mi^2*p, 1)*conjftpup + fft(p, 1)*conj(fft(mi^2*p, 1)) -2.*fft(mi*p, 1)*conj(fft(mi*p, 1)), -1).re(pix)/den(pix)
   
 	return dphi;   
 }
+
+func calc_dphis(phase)
+/* DOCUMENT
+ * 
+ */ 
+{
+	npix = dimsof(phase)(2);
+	mi = p = dphi = array(float,[2,2*npix,2*npix]);
+	mi(1:npix,1:npix) = phase;
+	dphi = (mi - mi(1,1))^2;
+	
+	return dphi; 
+}
+
 
 func calc_gamma(phase_para, phase_ortho, pup, den, conftpup)
 /* DOCUMENT 
@@ -308,13 +377,15 @@ func get_noisevar(cbmes, method, cbcom, iMat)
 	}
 	
 	if (method == "curl") {
+
+		// measurments sorted [x1, x2, x3, x4...., y1, y2, y3, y4, ...]
 		
-		indx = indgen(1:dimsof(cbmes)(2):2); // index for x direction
-		indy = indgen(2:dimsof(cbmes)(2):2); // index for y direction
+		indx = indgen(1:dimsof(cbmes)(2)/2); // index for x direction
+		indy = indgen(dimsof(cbmes)(2)/2+1:dimsof(cbmes)(2));// index for y direction
 		dsx  = cbmes(indx, )(dif, );         // x slopes variations
 		dsy  = cbmes(indy, )(dif, );         // y slopes variations
-		dx   = indx(dif);
-		dy   = indy(dif);
+		dx   = indx(dif) * wfs.pixsize / 206264.8;	// conversion pixsize(arcsec) -> radian
+		dy   = indy(dif) * wfs.pixsize / 206264.8;
 		
 		curl = dsy / dx - dsx / dy;          // curl calculation
 		

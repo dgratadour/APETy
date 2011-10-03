@@ -34,7 +34,8 @@ func mult_wfs(iter,disp=)
     phase  += get_turb_phase(iter,ns,"wfs");
     // only look at DMs if not running in open loop
     if (loop.method != "open-loop") {
-        phase  += get_phase2d_from_dms(ns,"wfs");
+        phase  += get_phase2d_from_dms(ns,"wfs"); 
+		// enleve la phase parallele  ====> obtient la phase residuelle
       }
 
     if (wfs(ns).correctUpTT) {
@@ -46,30 +47,38 @@ func mult_wfs(iter,disp=)
     // i.e. THE TRUTH !!! ... for test purposes only off-course !
     // don't forget to init dphi_ortho to 0 before starting the loop : dphi_ortho=0.
     // divide by loop.niter (e.g. 10000) when loop is over    
-    extern dphi_tot,dphi_para,dphi_ortho,gamma_eps,smes_alias,smes_nonoise,matPass,den,conjftpup;
+	extern dphi_tot, dphi_para, dphi_ortho, gamma_eps, \
+	       smes_alias, smes_nonoise, matPass, den, conjftpup, wfs;
     
     pix = where(ipupil);
- 
+	  
     //tmp = float(phase);
     tmp       = float(phase-phase(pix)(avg)); // remove piston mode
     vect      = (tmp*ipupil)(pix)(+)*matPass(,+);  // projection phase sur modes miroir => vect: coefficient sur chaque mode
-    dm_p      = vect(+)*mInf(,,+); // phase para donc miroir
-    tmp_ortho = float(tmp - dm_p);
-
-    n1     = dm(1)._n1;
-    n2     = dm(1)._n2;
-    sz = n2-n1+1;
+    dm_p      = vect(+)*mInf(,,+); // phase residuelle para
+    tmp_ortho = float(tmp - dm_p); // phase ortho
+ 
+    n1   = dm(1)._n1;
+    n2   = dm(1)._n2;
+    sz   = n2-n1+1;
     pupd = sim.pupildiam;
     ind0 = (sz - pupd)/2;
-    n1 += ind0;
-    n2 -= ind0;
-    
-    //dphi_ortho += calc_dphi(tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den);
+    n1  += ind0;
+    n2  -= ind0;
+	  
+	  
+	  //dphi_ortho += calc_dphi(tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den);
     dphi_tot   += calc_dphif(tmp(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
     dphi_ortho += calc_dphif(tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
     dphi_para  += calc_dphif(dm_p(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);	  
 	//gamma_eps  += calc_gamma(dm_p(n1:n2,n1:n2), tmp_ortho(n1:n2,n1:n2),ipupil(n1:n2,n1:n2),den,conjftpup);
+    if (is_void(dphi_exact)) {
+		dphi_exact = calc_dphis(dm_p(n1:n2,n1:n2));
+	} else {
+		dphi_exact += calc_dphis(dm_p(n1:n2,n1:n2));
+	}
 
+	  
 	nsave = wfs(ns).noise;
     // switch off noise
     wfs(ns).noise = 0;
@@ -135,7 +144,7 @@ func mult_wfs(iter,disp=)
     if (wfs(ns)._cyclecounter == 1) {
       smes = smes - *wfs(ns)._refmes;
     }
-
+	  
     // compute the TT and subtract if required:
     wfs(ns)._tt(1) = sum( smes * (*wfs(ns)._tiprefvn) );
     wfs(ns)._tt(2) = sum( smes * (*wfs(ns)._tiltrefvn) );
