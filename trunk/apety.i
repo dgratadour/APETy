@@ -23,7 +23,7 @@ require,"yao_funcs.i";
 require,"apety_utils.i";
 YAO_SAVEPATH = "/tmp/";
 
-func get_psf(cbmes, dphiOrtho, covmes_alias, den, cov_basis=, noise_method=, disp=)
+func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma_eps=, cov_basis=, noise_method=, disp=)
 /* DOCUMENT get_psf(cbmes,noisevar,dphiOrtho,cov_mes_alias,den,disp=)
  
  cbmes = circular buffer mesure
@@ -213,8 +213,12 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, cov_basis=, noise_method=, dis
 	// building the otf following : OTF = exp(-1/2 * Dphi)
 	//tmp2 = exp(-0.5*para)*exp(-0.5*alias)*exp(-0.5*(dphiOrtho)*(2*pi/(*target.lambda)(1))^2);
 	
-	tmp = exp(-0.5*dphi)*exp(-0.5*(dphiOrtho)*(2.*pi/(*target.lambda)(1))^2);
-	
+	if (gamma_eps) {
+		tmp = exp(-0.5*(dphi+2.*gamma_eps))*exp(-0.5*(dphiOrtho)*(2.*pi/(*target.lambda)(1))^2);
+	} else {
+		tmp = exp(-0.5*dphi)*exp(-0.5*(dphiOrtho)*(2.*pi/(*target.lambda)(1))^2);
+	}
+
 	
 	//tmp = exp(-0.5*eclat(rebin_n(dphi_exact, 256)))*(2.*pi/(*target.lambda)(1))^2;
 	
@@ -354,8 +358,8 @@ func test_apety(void)
 	// in red the telescope only psf
 	
 	
-	//error;
-	psf = get_psf(cbmes, dphi_ortho/loop.niter, covmes_alias, den, cov_basis="vij", noise_method="DSP", disp=1);
+	error;
+	psf = get_psf(cbmes, dphi_ortho/loop.niter, covmes_alias, den, gamma_eps=, cov_basis="vij", noise_method="DSP", disp=1);
 	
 	return psf;
 }
