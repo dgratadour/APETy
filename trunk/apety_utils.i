@@ -293,11 +293,16 @@ func calc_gamma(phase_para, phase_ortho, pup, den, conftpup)
  * KEYWORDS :  
  */ 
 {
+	phase_para  = phase_para(:pupd, :pupd);
+	phase_ortho = phase_ortho(:pupd, :pupd);
+	
 	npix = dimsof(phase_para)(2);
+	
 	m_para = m_ortho = p = gamma_eps = array(float,[2,2*npix,2*npix]);
-	m_para(1:npix,1:npix) = phase_para;
+	
+	m_para(1:npix,1:npix)  = phase_para;
 	m_ortho(1:npix,1:npix) = phase_ortho*(2*pi/(*target.lambda)(1))^2;
-	p(1:npix,1:npix)  = pup;
+	p(1:npix,1:npix)       = pup(:pupd, :pupd);
 	
 	mask = den > max(den)*1.e-7;
 	pix  = where(mask);
