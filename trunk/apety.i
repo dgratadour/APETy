@@ -262,7 +262,7 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, cov_basis=, noise_method=, dis
 		pltitle, "PSF circ avg";
 	}
 	
-	error;
+	//error;
 	return psfrec;
 }
 
@@ -354,7 +354,7 @@ func test_apety(void)
 	// in red the telescope only psf
 	
 	
-	error;
+	//error;
 	psf = get_psf(cbmes, dphi_ortho/loop.niter, covmes_alias, den, cov_basis="vij", noise_method="DSP", disp=1);
 	
 	return psf;
