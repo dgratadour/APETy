@@ -47,13 +47,13 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, cov_basis=, noise_method=, dis
 
 	// erreur de sous-modelisation
 	under_modeling_var = 0.021 * (atm.dr0at05mic)^(5./3.);
-	aliasing_var       = trace(covmes_alias);
+
 	
 	// compute the (noisy) measurements covariance : Cww
-	covmes = (cbmes(,+)*cbmes(,+)) / dimsof(cbmes)(3);
+	covmes = (cbmes(,+)*cbmes(,+)) / dimsof(cbmes)(3)^2;
 	// remove the noise variance on the diagonal
 	covNoise = diag(noisevar);
-	//covmes  -= covNoise;
+	covmes  -= covNoise;
 	
 	// compute the modes covariance from the measurements covariance (x comMat) eq. 41
 	cov_eps =(cMat(,+)*covmes(+,))(,+) * cMat(,+); // ~ D+(Cww)T(D+) mais pour cov des modes
@@ -61,11 +61,7 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, cov_basis=, noise_method=, dis
 	cov_alias =(cMat(,+)*(covmes_alias)(+,))(,+) * cMat(,+);
 	
 	// error caused by servo lag
-	temporal_var = trace(cov_eps); // verif car beaucoup trop grand
-	
-	// residual mirror phase variance
-	//var_para = temporal_var + aliasing_var;
-	
+	temporal_var = trace(cov_eps); // verif car beaucoup trop grand	
 	
 	// some inits
 	nmodes = dm._nact(sum); // # actuators
@@ -209,7 +205,7 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, cov_basis=, noise_method=, dis
 	p = array(float,[2,2*pupd,2*pupd]);
 	p(1:pupd,1:pupd)  = ipupil(n1:n2,n1:n2)(:pupd, :pupd);
 	
-	den  = correlate(p,p).re;
+	//den  = correlate(p,p).re;
 	mask = den > max(den)*1.e-7;
 	mask = 1-mask;
 	den  = den(where(mask));
@@ -218,6 +214,9 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, cov_basis=, noise_method=, dis
 	//tmp2 = exp(-0.5*para)*exp(-0.5*alias)*exp(-0.5*(dphiOrtho)*(2*pi/(*target.lambda)(1))^2);
 	
 	tmp = exp(-0.5*dphi)*exp(-0.5*(dphiOrtho)*(2.*pi/(*target.lambda)(1))^2);
+	
+	
+	//tmp = exp(-0.5*eclat(rebin_n(dphi_exact, 256)))*(2.*pi/(*target.lambda)(1))^2;
 	
 	
 	// clean-up the otf beyond the cut-off frequency
@@ -278,9 +277,9 @@ func test_apety(void)
 	fma; plg,[1]; fma;
 	
 	// reading parfile
-	//aoread,"nici.par";
-	aoread,"sh6x6_svipc.par";
-	//aoread,"sh16x16_svipc.par";
+	aoread, "nici.par";
+	//aoread, "sh6x6_svipc.par";
+	//aoread, "sh16x16_svipc.par";
 	
 	aoinit,clean=1,disp=0;
 	aoloop,savecb=1,disp=0;
@@ -356,7 +355,7 @@ func test_apety(void)
 	
 	
 	error;
-	psf = get_psf(cbmes, dphi_ortho, covmes_alias, den, cov_basis="vij", noise_method="DSP", disp=1);
+	psf = get_psf(cbmes, dphi_ortho/loop.niter, covmes_alias, den, cov_basis="vij", noise_method="DSP", disp=1);
 	
 	return psf;
 }
