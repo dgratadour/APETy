@@ -316,7 +316,7 @@ func test_apety(void)
 	dphi_ortho = 0.;
 	dphi_tot   = 0.;
 	dphi_para  = 0.;
-	//gamma_eps  = 0.;
+	gamma_eps  = 0.;
 	
 	n1   = dm(1)._n1;
 	n2   = dm(1)._n2;
