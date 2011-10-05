@@ -23,7 +23,7 @@ require,"yao_funcs.i";
 require,"apety_utils.i";
 YAO_SAVEPATH = "/tmp/";
 
-func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma_eps=, cov_basis=, noise_method=, disp=)
+func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_method=, disp=)
 /* DOCUMENT get_psf(cbmes,noisevar,dphiOrtho,cov_mes_alias,den,disp=)
  
  cbmes = circular buffer mesure
@@ -44,10 +44,6 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma_eps=, cov_basis=, noise_
 	} else {
 		noisevar     = get_noisevar(cbmes, noise_method, cbcom, iMat);
 	}
-
-	// erreur de sous-modelisation
-	under_modeling_var = 0.021 * (atm.dr0at05mic)^(5./3.);
-
 	
 	// compute the (noisy) measurements covariance : Cww
 	covmes = (cbmes(,+)*cbmes(,+)) / dimsof(cbmes)(3);
@@ -62,6 +58,9 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma_eps=, cov_basis=, noise_
 	
 	// error caused by servo lag
 	temporal_var = trace(cov_eps); // verif car beaucoup trop grand	
+	// erreur de sous-modelisation
+	under_modeling_var = 0.021 * (atm.dr0at05mic)^(5./3.);	
+	
 	
 	// some inits
 	nmodes = dm._nact(sum); // # actuators
@@ -213,7 +212,7 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma_eps=, cov_basis=, noise_
 	// building the otf following : OTF = exp(-1/2 * Dphi)
 	//tmp2 = exp(-0.5*para)*exp(-0.5*alias)*exp(-0.5*(dphiOrtho)*(2*pi/(*target.lambda)(1))^2);
 	
-	if (gamma_eps) {
+	if (gamma) {
 		gamma_eps = gamma_eps / loop.niter;
 		tmp = exp(-0.5*(dphi+2.*gamma_eps))*exp(-0.5*(dphiOrtho)*(2.*pi/(*target.lambda)(1))^2);
 	} else {
@@ -360,7 +359,7 @@ func test_apety(void)
 	
 	
 	//error;
-	psf = get_psf(cbmes, dphi_ortho/loop.niter, covmes_alias, den, gamma_eps=0, cov_basis="vij", noise_method="DSP", disp=1);
+	psf = get_psf(cbmes, dphi_ortho/loop.niter, covmes_alias, den, gamma=0, cov_basis="vij", noise_method="DSP", disp=1);
 	
 	return psf;
 }
