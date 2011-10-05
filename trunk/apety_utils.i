@@ -313,15 +313,17 @@ func calc_gamma(phase_para, phase_ortho, pup, den, conftpup)
 	return gamma_eps;
 }
 
-func plot_dphi(dphi, color=) {
+func plot_dphi(dphi, color=, type=, middle=) {
 	
-	if (is_void(color)) color="black";
-	
-	dphi = circavg(dphi);
+	if (is_void(color)) color = "black";
+	if (is_void(type)) type   = "solid";
+	if (is_void(middle)) middle = 0;
+
+	dphi = circavg(dphi, middle=middle);
 	ind  = where(dphi != 0.);
 	D_r  = 0.5 * ind / numberof(ind);
 	
-	plg, dphi(ind), D_r, marks=0, color=color;
+	plg, dphi(ind), D_r, marks=0, color=color, type=type;
 	pltitle, "Circavg of the phase structures";
 	xytitles, "D/r";
 }
