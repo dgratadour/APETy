@@ -50,10 +50,10 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma_eps=, cov_basis=, noise_
 
 	
 	// compute the (noisy) measurements covariance : Cww
-	covmes = (cbmes(,+)*cbmes(,+)) / dimsof(cbmes)(3)^2;
+	covmes = (cbmes(,+)*cbmes(,+)) / dimsof(cbmes)(3);
 	// remove the noise variance on the diagonal
 	covNoise = diag(noisevar);
-	covmes  -= covNoise;
+	//covmes  -= covNoise;
 	
 	// compute the modes covariance from the measurements covariance (x comMat) eq. 41
 	cov_eps =(cMat(,+)*covmes(+,))(,+) * cMat(,+); // ~ D+(Cww)T(D+) mais pour cov des modes
@@ -214,6 +214,7 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma_eps=, cov_basis=, noise_
 	//tmp2 = exp(-0.5*para)*exp(-0.5*alias)*exp(-0.5*(dphiOrtho)*(2*pi/(*target.lambda)(1))^2);
 	
 	if (gamma_eps) {
+		gamma_eps = gamma_eps / loop.niter;
 		tmp = exp(-0.5*(dphi+2.*gamma_eps))*exp(-0.5*(dphiOrtho)*(2.*pi/(*target.lambda)(1))^2);
 	} else {
 		tmp = exp(-0.5*dphi)*exp(-0.5*(dphiOrtho)*(2.*pi/(*target.lambda)(1))^2);
@@ -358,8 +359,8 @@ func test_apety(void)
 	// in red the telescope only psf
 	
 	
-	error;
-	psf = get_psf(cbmes, dphi_ortho/loop.niter, covmes_alias, den, gamma_eps=, cov_basis="vij", noise_method="DSP", disp=1);
+	//error;
+	psf = get_psf(cbmes, dphi_ortho/loop.niter, covmes_alias, den, gamma_eps=0, cov_basis="vij", noise_method="DSP", disp=1);
 	
 	return psf;
 }
