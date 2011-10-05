@@ -47,7 +47,7 @@ func mult_wfs(iter,disp=)
     // i.e. THE TRUTH !!! ... for test purposes only off-course !
     // don't forget to init dphi_ortho to 0 before starting the loop : dphi_ortho=0.
     // divide by loop.niter (e.g. 10000) when loop is over    
-	extern dphi_tot, dphi_para, dphi_ortho, gamma_eps, \
+	  extern dphi_tot, dphi_para, dphi_ortho, gamma_eps, dphi_exact,\
 	       smes_alias, smes_nonoise, matPass, den, conjftpup, wfs;
     
     pix = where(ipupil);
