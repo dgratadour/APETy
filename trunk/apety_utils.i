@@ -281,7 +281,7 @@ func calc_dphis(phase)
 	npix = dimsof(phase)(2);
 	mi = p = dphi = array(float,[2,2*npix,2*npix]);
 	mi(1:npix,1:npix) = phase;
-	dphi = (mi - mi(1,1))^2;
+	dphi = (mi - mi(npix/2,npix/2))^2;
 	
 	return dphi; 
 }
