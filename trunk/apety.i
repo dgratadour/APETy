@@ -18,13 +18,13 @@
  *
  */
 
-require,"yao.i";
-require,"yao_funcs.i";
-require,"apety_utils.i";
+require, "yao.i";
+require, "yao_funcs.i";
+require, "apety_utils.i";
 YAO_SAVEPATH = "/tmp/";
 
 func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_method=, disp=)
-/* DOCUMENT get_psf(cbmes,noisevar,dphiOrtho,cov_mes_alias,den,disp=)
+/* DOCUMENT get_psf(cbmes, noisevar, dphiOrtho, cov_mes_alias, den, disp=)
  
  cbmes = circular buffer mesure
  den # OTF_tel # correlate(pupil, pupil)
@@ -38,23 +38,23 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	if (disp == []) disp = 0;
 	
 	// noise calculation
-	if (is_void(noise_method)) {
-		noise_method = "DSP";
-		noisevar     = get_noisevar(cbmes, noise_method, cbcom, iMat);
-	} else {
-		noisevar     = get_noisevar(cbmes, noise_method, cbcom, iMat);
-	}
+	//if (is_void(noise_method)) {
+	//	noise_method = "DSP";
+	//	noisevar     = get_noisevar(cbmes, noise_method, cbcom, iMat);
+	//} else {
+	//	noisevar     = get_noisevar(cbmes, noise_method, cbcom, iMat);
+	//}
 	
 	// compute the (noisy) measurements covariance : Cww
-	covmes = (cbmes(,+)*cbmes(,+)) / dimsof(cbmes)(3);
+	covmes = (cbmes(, +)*cbmes(, +)) / dimsof(cbmes)(3);
 	// remove the noise variance on the diagonal
 	covNoise = diag(noisevar);
 	//covmes  -= covNoise;
 	
 	// compute the modes covariance from the measurements covariance (x comMat) eq. 41
-	cov_eps =(cMat(,+)*covmes(+,))(,+) * cMat(,+); // ~ D+(Cww)T(D+) mais pour cov des modes
+	cov_eps =(cMat(, +)*covmes(+, ))(, +) * cMat(, +); // ~ D+(Cww)T(D+) mais pour cov des modes
 	// compute the modes covariance from the aliasing measurements component Crr of eq. 44
-	cov_alias =(cMat(,+)*(covmes_alias)(+,))(,+) * cMat(,+);
+	cov_alias =(cMat(, +)*(covmes_alias)(+, ))(, +) * cMat(, +);
 	
 	// error caused by servo lag
 	temporal_var = trace(cov_eps); // verif car beaucoup trop grand	
@@ -64,16 +64,16 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	
 	// some inits
 	nmodes = dm._nact(sum); // # actuators
-	mInf = array(0.0f,sim._size,sim._size,nmodes);
+	mInf = array(0.0f, sim._size, sim._size, nmodes);
 	cpt = 0;
 	for (nm=1;nm<=ndm;nm++) {
 		n1 = dm(nm)._n1; n2 = dm(nm)._n2; nxy = n2-n1+1;
 		for (cc=1;cc<=dm._nact(nm);cc++) {
 			cpt ++;
-			scommand = float(modToAct(indexDm(1,nm):indexDm(2,nm),cc)); 
+			scommand = float(modToAct(indexDm(1, nm):indexDm(2, nm), cc)); 
 			// compute the influence matrix with computed DM shape from given commands
 			// # modes miroirs
-			mInf(n1:n2,n1:n2,cpt) = comp_dm_shape(nm,&scommand)*ipupil(n1:n2,n1:n2);
+			mInf(n1:n2, n1:n2, cpt) = comp_dm_shape(nm, &scommand)*ipupil(n1:n2, n1:n2);
 		}
 	}
 	
@@ -95,12 +95,12 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	 // slow version
 	 for (i=1;i<=nmodes;i++) {
 	 for (j=1;j<=i;j++) {
-	 write,format="\rComputing U%d%d",i,j;
-	 tmp = calc_uij(mInf(n1:n2,n1:n2,i),mInf(n1:n2,n1:n2,j),ipupil(n1:n2,n1:n2),den);
+	 write, format="\rComputing U%d%d", i, j;
+	 tmp = calc_uij(mInf(n1:n2, n1:n2, i), mInf(n1:n2, n1:n2, j), ipupil(n1:n2, n1:n2), den);
 	 // pure parallel
-	 dphiPara += (cov_eps(i,j)+cov_eps(j,i))*tmp;
+	 dphiPara += (cov_eps(i, j)+cov_eps(j, i))*tmp;
 	 // aliaising component
-	 dphiAlias += (cov_alias(i,j)+cov_alias(j,i))*tmp;
+	 dphiAlias += (cov_alias(i, j)+cov_alias(j, i))*tmp;
 	 }
 	 }
 	 */
@@ -109,38 +109,38 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	if (is_void(cov_basis) || (cov_basis != "vij")) {
 	 
 		// fast version
-		write,"modes fft computation\n";
+		write, "modes fft computation\n";
 		// FFT(M(i)) = ftmi   M(i)  mode i
 		// M(i)
 		
-		ftmi = array(complex,[3,2*pupd,2*pupd,nmodes]);
-		mis  = array(float,[3,2*pupd,2*pupd,nmodes]);
+		ftmi = array(complex, [3, 2*pupd, 2*pupd, nmodes]);
+		mis  = array(float, [3, 2*pupd, 2*pupd, nmodes]);
 		for (i=1;i<=nmodes;i++) {
-			mis(1:pupd,1:pupd,i) = (mInf*ipupil)(n1:n2,n1:n2,i)(:pupd, :pupd);
-			ftmi(,,i) = fft(mis(,,i),1);
-			write,format=" \rComputing fft of mode %d",i;
+			mis(1:pupd, 1:pupd, i) = (mInf*ipupil)(n1:n2, n1:n2, i)(:pupd, :pupd);
+			ftmi(, , i) = fft(mis(, , i), 1);
+			write, format=" \rComputing fft of mode %d", i;
 		}
 		
-		p                = array(float,[2,2*pupd,2*pupd]);
-		p(1:pupd,1:pupd) = ipupil(n1:n2,n1:n2)(:pupd, :pupd);
-		conjftp          = conj(fft(p,1));
+		p                = array(float, [2, 2*pupd, 2*pupd]);
+		p(1:pupd, 1:pupd) = ipupil(n1:n2, n1:n2)(:pupd, :pupd);
+		conjftp          = conj(fft(p, 1));
 
 
-		 write,"Uij computation\n";
+		 write, "Uij computation\n";
 		for (i=1;i<=nmodes;i++) {
 			for (j=1;j<=i;j++) {
-				write,format=" \rComputing U%d%d",i,j;
-				tmp = calc_uijf(ftmi(,,i),ftmi(,,j),mis(,,i),mis(,,j),den,conjftp);
+				write, format=" \rComputing U%d%d", i, j;
+				tmp = calc_uijf(ftmi(, , i), ftmi(, , j), mis(, , i), mis(, , j), den, conjftp);
 				if (i != j) {
 					// pure parallel
-					dphiPara += (cov_eps(i,j)+cov_eps(j,i))*tmp; //Eq.36
+					dphiPara += (cov_eps(i, j)+cov_eps(j, i))*tmp; //Eq.36
 					// aliasing component
-					dphiAlias += (cov_alias(i,j)+cov_alias(j,i))*tmp;
+					dphiAlias += (cov_alias(i, j)+cov_alias(j, i))*tmp;
 				} else {
 					// pure parallel
-					dphiPara += cov_eps(i,j)*tmp;
+					dphiPara += cov_eps(i, j)*tmp;
 					// aliasing component
-					dphiAlias += cov_alias(i,j)*tmp;
+					dphiAlias += cov_alias(i, j)*tmp;
 				}
 			}
 		 }
@@ -148,20 +148,20 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 		para  = dphiPara;
 		alias = dphiAlias;
 		dphi = para + alias;
-		//error,"test uij";
+		//error, "test uij";
 	} else { 
 		
-		write,"modes computation\n";
-		mis = array(float,[3,2*pupd,2*pupd,nmodes]);
+		write, "modes computation\n";
+		mis = array(float, [3, 2*pupd, 2*pupd, nmodes]);
 		for (i=1;i<=nmodes;i++) {
-			mis(1:pupd,1:pupd,i) = (mInf*ipupil)(n1:n2,n1:n2,i)(:pupd, :pupd);
-			write,format=" \rComputing mode %d",i;
+			mis(1:pupd, 1:pupd, i) = (mInf*ipupil)(n1:n2, n1:n2, i)(:pupd, :pupd);
+			write, format=" \rComputing mode %d", i;
 		}
 		
-		ftmi = array(complex,[3,2*pupd,2*pupd,nmodes]);
-		p = array(float,[2,2*pupd,2*pupd]);
-		p(1:pupd,1:pupd) = ipupil(n1:n2,n1:n2)(:pupd, :pupd);
-		conjftp = conj(fft(p,1));
+		ftmi = array(complex, [3, 2*pupd, 2*pupd, nmodes]);
+		p = array(float, [2, 2*pupd, 2*pupd]);
+		p(1:pupd, 1:pupd) = ipupil(n1:n2, n1:n2)(:pupd, :pupd);
+		conjftp = conj(fft(p, 1));
 		
 		// very fast version
 		vii = array(float, [3, dimsof(p)(2), dimsof(p)(3), nmodes]);
@@ -175,14 +175,14 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 		// Calculation of the eigen values/vectors 
 		l = SVdec(cov_eps + cov_alias, u, vt, full=1);
 		
-		// reconstruction: alias+mes = (u(,+) * diag(l)(+,))(,+) * vt(+,)
+		// reconstruction: alias+mes = (u(, +) * diag(l)(+, ))(, +) * vt(+, )
 		
 		write, "\nVii computation\n";
-		vii = mis(, , +) * vt(,+);
+		vii = mis(, , +) * vt(, +);
 		
 		for (i=1;i<=nmodes;i++) {
 			ftmi(, , i) = fft(vii(, , i), 1);
-			write,format=" \rComputing fft of mode %d",i;
+			write, format=" \rComputing fft of mode %d", i;
 		}	
 		write, "";
 		dphi = dphiOrtho * 0.;
@@ -190,7 +190,7 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 		
 		for (i=1;i<=nmodes;i++) {
 			write, format=" \rComputing V%d%d mode", i;
-			modei = vii(..,i);
+			modei = vii(.., i);
 			
 			tmp = calc_Viif(ftmi(, , i), ftmi(, , i), modei, modei, den, conjftp);
 			
@@ -201,10 +201,10 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	}
 	
 	// here we create a mask that defines the support on which the phase structure functions or non-nil
-	p = array(float,[2,2*pupd,2*pupd]);
-	p(1:pupd,1:pupd)  = ipupil(n1:n2,n1:n2)(:pupd, :pupd);
+	p = array(float, [2, 2*pupd, 2*pupd]);
+	p(1:pupd, 1:pupd)  = ipupil(n1:n2, n1:n2)(:pupd, :pupd);
 	
-	//den  = correlate(p,p).re;
+	//den  = correlate(p, p).re;
 	mask = den > max(den)*1.e-7;
 	mask = 1-mask;
 	den  = den(where(mask));
@@ -233,36 +233,36 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	// this is where you take into account the sampling of the PSF
 	// basically shannon sampling means an array of [4 x cut-off freq (in pixels)] x [4 x cut-off freq]
 	// here we depend on yao and actually everything is fixed by sim._size
-	fto_turb = array(float,[2,sim._size,sim._size]);
-	fto_turb(1:sz,1:sz) = eclat(tmp);
+	fto_turb = array(float, [2, sim._size, sim._size]);
+	fto_turb(1:sz, 1:sz) = eclat(tmp);
 	
 	// recentering the otf on its final support
-	fto_turb = eclat(roll(fto_turb,[sim._size/2-sz/2,sim._size/2-sz/2]));
+	fto_turb = eclat(roll(fto_turb, [sim._size/2-sz/2, sim._size/2-sz/2]));
 	//fto_turb = eclat(fto_turb)
 	
 	// building the telescope otf
 	// the pixel size is fixed by the simulation parameters
-	fto_tel   = telfto(1.65,0.01,8.,0.1125,(*target.lambda)(1)/tel.diam/4.85/(float(sim._size)/sim.pupildiam),sim._size);
+	fto_tel   = telfto(*trarget.lambda, 0.01, tel.diam, tel.cobs, (*target.lambda)(1)/tel.diam/4.85/(float(sim._size)/sim.pupildiam), sim._size);
 	
 	// building the various PSFs
-	psftel = eclat(abs(fft(fto_tel,-1)));
-	psf    = eclat(abs(fft(fto_tel*fto_turb,-1)));
+	psftel = eclat(abs(fft(fto_tel, -1)));
+	psf    = eclat(abs(fft(fto_tel*fto_turb, -1)));
 	
 	//PSF from yao
-	psftest= imav(,,1,1)/sum(imav(,,1,1));
+	psftest= imav(, , 1, 1)/sum(imav(, , 1, 1));
 	
 	// re-normalization of the reconstructed PSF and the telescope PSF
 	psfrec = psf/sum(psf);
 	psftel = psftel/sum(psftel);
 	
-	difract = circavg(psftel,middle=1);
+	difract = circavg(psftel, middle=1);
 	
 	if (disp) {
-		fma; limits,,5;
-		plg, difract/max(difract),color="red";
-		plg, circavg(psftest,middle=1)/max(difract);
-		plg, circavg(psfrec,middle=1)/max(difract),color="green";
-		xytitles, "pixels","Strehl ratio";
+		fma; limits, , 5;
+		plg, difract/max(difract), color="red";
+		plg, circavg(psftest, middle=1)/max(difract);
+		plg, circavg(psfrec, middle=1)/max(difract), color="green";
+		xytitles, "pixels", "Strehl ratio";
 		pltitle, "PSF circ avg";
 	}
 	
@@ -278,26 +278,26 @@ func test_apety(void)
 	extern dphi_tot, dphi_ortho, dphi_para, 
 	       smes_alias, smes_nonoise, matPass, den, conjftpup, iMat;
 	
-	fma; plg,[1]; fma;
+	fma; plg, [1]; fma;
 	
 	// reading parfile
 	aoread, "nici.par";
 	//aoread, "sh6x6_svipc.par";
 	//aoread, "sh16x16_svipc.par";
 	
-	aoinit,clean=1,disp=0;
-	aoloop,savecb=1,disp=0;
+	aoinit, clean=1, disp=0;
+	aoloop, savecb=1, disp=0;
 	
 	// r0 prop lambda^(6/5);
 	// r0at05mic = tel.diam/atm.dr0at05mic;
 	// r0im = ((*target.lambda)(1)/0.5)^(6/5.)*r0at05mic;
 	// pixsize = tel.diam/sim.pupildiam;
 	// r0pix = r0im/pixsize;
-	// dphiO = get_ortho(r0pix,50)
+	// dphiO = get_ortho(r0pix, 50)
 	
 	size   = sim._size;
 	nmodes = dm._nact(sum);
-	mInf   = array(0.0f,size,size,nmodes);
+	mInf   = array(0.0f, size, size, nmodes);
 	cpt    = 0;
 	
 	for (nm=1 ; nm<=ndm ; nm++) {
@@ -344,12 +344,12 @@ func test_apety(void)
 
 	// AO loop ... acquiring circular buffers
 	// + computation dphi_ortho and the real dphi_tot for comparison
-	//for (i=1;i<=loop.niter;i++) go,1;
+	//for (i=1;i<=loop.niter;i++) go, 1;
 	go, all=1;
 	
 	smes = smes_alias(, 2:);
 	// compute the covariance of the aliasing measurments
-	covmes_alias = (smes(,+)*smes(,+))/dimsof(smes)(3);
+	covmes_alias = (smes(, +)*smes(, +))/dimsof(smes)(3);
 	
 	
 	// and now ... reconstruct psf with display ...
