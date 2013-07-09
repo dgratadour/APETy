@@ -34,7 +34,8 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	
 	extern cMat; // command matrix => mes2volt
 	// RECONSTRUCTEUR
-    
+    cMat	= LUsolve(iMat(+, ) * iMat(+, ))(, +) * iMat(, +); // inverse generalisee eqv cMat
+	
 	if (disp == []) disp = 0;
 	
 	// noise calculation
@@ -77,7 +78,7 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	n2		= dm(1)._n2;
 	sz		= n2-n1+1;
 	pupd	= sim.pupildiam;
-	ind0	= (sz - pupd)/2;
+	ind0	= (sz - pupd) / 2;
 	n1		+= ind0;
 	n2		-= ind0;
 	
@@ -209,9 +210,9 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	
 	if (gamma) {
 		gamma_eps	= gamma_eps / loop.niter;
-		tmp			= exp(-0.5 * (dphi + 2. * gamma_eps)) * exp(-0.5 * (dphiOrtho) * (2. * pi / (*target.lambda)(1))^2);
+		tmp			= exp(-0.5 * (dphi + 2. * gamma_eps)*(2. * pi / (*target.lambda)(1))^2) * exp(-0.5 * (dphiOrtho) * (2. * pi / (*target.lambda)(1))^2);
 	} else {
-		tmp			= exp(-0.5 * dphi) * exp(-0.5 * (dphiOrtho) * (2. * pi/(*target.lambda)(1))^2);
+		tmp			= exp(-0.5 * dphi * (2. * pi / (*target.lambda)(1))^2) * exp(-0.5 * (dphiOrtho) * (2. * pi/(*target.lambda)(1))^2);
 	}
 	
 	
@@ -237,7 +238,8 @@ func get_psf(cbmes, dphiOrtho, covmes_alias, den, gamma=, cov_basis=, noise_meth
 	
 	// building the telescope otf
 	// the pixel size is fixed by the simulation parameters
-	fto_tel		= telfto(*trarget.lambda, 0.01, tel.diam, tel.cobs, (*target.lambda)(1) / tel.diam / 4.85 / (float(sim._size) / sim.pupildiam), sim._size);
+	lambda		= (*trarget.lambda)(1)
+	fto_tel		= telfto(lambda, 0.01, tel.diam, tel.cobs, lambda / tel.diam / 4.848 / (float(sim._size) / sim.pupildiam), sim._size);
 	
 	// building the various PSFs
 	psftel	= eclat(abs(fft(fto_tel, -1)));
@@ -276,9 +278,10 @@ func test_apety(void)
 	fma; plg, [1]; fma;
 	
 	// reading parfile
-	aoread, "nici.par";
-	//aoread, "sh6x6_svipc.par";
+	//aoread, "nici.par";
+	aoread, "sh6x6_svipc.par";
 	//aoread, "sh16x16_svipc.par";
+	//aoread, "canary-TS-zernike.par";
 	
 	aoinit, clean=1, disp=0;
 	aoloop, savecb=1, disp=0;
